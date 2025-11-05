@@ -74,7 +74,7 @@ export default function App() {
         )}
 
         <footer className="pt-8 text-center text-gray-500 text-sm">
-          Built to demonstrate a complete flow: secure login, AI guidance, and farmer services. No external requests are made in this demo UI.
+          Connected experience: secure sign-in, live server advice, and marketplace listings backed by the API.
         </footer>
       </main>
     </div>

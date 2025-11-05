@@ -1,35 +1,61 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShoppingCart } from 'lucide-react';
 
-const initialItems = [
-  { id: 1, title: 'Organic Wheat (500 kg)', price: 18, unit: '₹/kg', location: 'Sitapur', type: 'Sell' },
-  { id: 2, title: 'Need: Certified Paddy Seeds (50 kg)', price: 42, unit: '₹/kg', location: 'Nashik', type: 'Buy' },
-  { id: 3, title: 'Tractor (sharing, hourly)', price: 700, unit: '₹/hour', location: 'Hassan', type: 'Rent' },
-];
+const API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
 
 export default function MarketplacePreview() {
-  const [items, setItems] = useState(initialItems);
+  const [items, setItems] = useState([]);
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [type, setType] = useState('Sell');
   const [location, setLocation] = useState('');
   const [unit, setUnit] = useState('₹/kg');
+  const [loading, setLoading] = useState(false);
 
-  const addItem = (e) => {
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(`${API}/marketplace`);
+        const data = await res.json();
+        setItems(data.items || []);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    load();
+  }, []);
+
+  const addItem = async (e) => {
     e.preventDefault();
     if (!title || !price || !location) return;
-    const newItem = {
-      id: Date.now(),
-      title,
-      price: Number(price),
-      unit,
-      location,
-      type,
-    };
-    setItems([newItem, ...items]);
-    setTitle('');
-    setPrice('');
-    setLocation('');
+    setLoading(true);
+    try {
+      const form = new FormData();
+      form.append('title', title);
+      form.append('price', price);
+      form.append('unit', unit);
+      form.append('type', type);
+      form.append('location', location);
+      const res = await fetch(`${API}/marketplace`, { method: 'POST', body: form });
+      const data = await res.json();
+      const created = data.item || {
+        id: Date.now(),
+        title,
+        price: Number(price),
+        unit,
+        location,
+        type,
+      };
+      setItems([created, ...items]);
+      setTitle('');
+      setPrice('');
+      setLocation('');
+    } catch (e) {
+      console.error(e);
+      alert('Failed to create listing');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,7 +80,7 @@ export default function MarketplacePreview() {
           <option>Rent</option>
         </select>
         <input className="rounded-lg border border-gray-300 px-3 py-2 md:col-span-2" placeholder="Location" value={location} onChange={(e) => setLocation(e.target.value)} />
-        <button className="bg-violet-600 text-white rounded-lg px-4 py-2 hover:bg-violet-700 transition md:col-span-3">List item</button>
+        <button className="bg-violet-600 text-white rounded-lg px-4 py-2 hover:bg-violet-700 transition md:col-span-3" disabled={loading}>{loading ? 'Listing…' : 'List item'}</button>
       </form>
 
       <div className="divide-y">
@@ -69,6 +95,9 @@ export default function MarketplacePreview() {
             </div>
           </div>
         ))}
+        {items.length === 0 && (
+          <p className="py-6 text-center text-gray-500">No listings yet. Be the first to add one!</p>
+        )}
       </div>
     </div>
   );

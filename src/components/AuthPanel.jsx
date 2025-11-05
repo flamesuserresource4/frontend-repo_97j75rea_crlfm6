@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Phone, Mail, User } from 'lucide-react';
 
+const API = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+
 export default function AuthPanel({ onLogin }) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -17,14 +19,18 @@ export default function AuthPanel({ onLogin }) {
     setOtpSent(true);
   };
 
-  const verifyOtp = (e) => {
+  const verifyOtp = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      if (otp === '123456') {
+    try {
+      const form = new FormData();
+      form.append('phone', phone);
+      form.append('otp', otp);
+      const res = await fetch(`${API}/auth_otp`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.authenticated) {
         const profile = {
-          name: name || 'Farmer',
+          name: name || data.name || 'Farmer',
           phone,
           method: 'otp',
         };
@@ -32,26 +38,43 @@ export default function AuthPanel({ onLogin }) {
       } else {
         alert('Invalid OTP. Use 123456 for demo.');
       }
-    }, 700);
+    } catch (err) {
+      console.error(err);
+      alert('Network error while verifying OTP');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const googleLogin = () => {
+  const googleLogin = async () => {
     setLoading(true);
-    setTimeout(() => {
+    try {
+      const form = new FormData();
+      form.append('token', 'demo');
+      const res = await fetch(`${API}/auth_google`, { method: 'POST', body: form });
+      const data = await res.json();
+      if (data.authenticated) {
+        const profile = {
+          name: name || data.name || 'Google Farmer',
+          email: data.email || 'farmer@example.com',
+          method: 'google',
+        };
+        onLogin(profile);
+      } else {
+        alert('Google sign-in failed');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Network error during Google sign-in');
+    } finally {
       setLoading(false);
-      const profile = {
-        name: name || 'Google Farmer',
-        email: 'farmer@example.com',
-        method: 'google',
-      };
-      onLogin(profile);
-    }, 700);
+    }
   };
 
   return (
     <div className="w-full max-w-xl mx-auto bg-white/70 backdrop-blur border border-gray-200 rounded-2xl p-6 shadow-lg">
       <h2 className="text-2xl font-semibold text-gray-900 mb-4">Secure Sign In</h2>
-      <p className="text-gray-600 mb-6">Login with your phone (OTP) or Gmail. This demo simulates the flow without sending real requests.</p>
+      <p className="text-gray-600 mb-6">Login with your phone (OTP) or Gmail. This demo talks to the server for verification.</p>
 
       <form onSubmit={otpSent ? verifyOtp : sendOtp} className="space-y-4">
         <div className="flex items-center gap-3">
